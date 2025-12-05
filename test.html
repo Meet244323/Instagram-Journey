@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>AR Ring Try-On</title>
+ <style>
+  body {
+   margin: 0;
+   padding: 0;
+   font-family: 'Arial', sans-serif;
+   background-color: #f5f5f5;
+   color: #333;
+   display: flex;
+   flex-direction: column;
+   min-height: 100vh;
+  }
+  
+  .container {
+   display: flex;
+   flex: 1;
+  }
+  
+  .sidebar {
+   width: 250px;
+   background-color: #fff;
+   padding: 20px;
+   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+   z-index: 10;
+  }
+  
+  .main-content {
+   flex: 1;
+   position: relative;
+   overflow: hidden;
+  }
+  
+  #output-canvas {
+   display: block;
+   width: 100%;
+   height: 100%;
+  }
+  
+  .ring-selection {
+   margin-bottom: 20px;
+  }
+  
+  .ring-option {
+   display: block;
+   margin-bottom: 10px;
+   padding: 10px;
+   border: 1px solid #ddd;
+   border-radius: 5px;
+   cursor: pointer;
+   transition: all 0.3s ease;
+  }
+  
+  .ring-option:hover, .ring-option.selected {
+   background-color: #e0f7fa;
+   border-color: #00bcd4;
+  }
+  
+  .ring-preview {
+   width: 80px;
+   height: 80px;
+   margin: 0 auto 10px;
+   background-color: #f0f0f0;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   overflow: hidden;
+  }
+  
+  .controls {
+   margin-top: 20px;
+  }
+  
+  button {
+   display: block;
+   width: 100%;
+   padding: 10px;
+   margin-bottom: 10px;
+   background-color: #00bcd4;
+   color: white;
+   border: none;
+   border-radius: 5px;
+   cursor: pointer;
+   transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+   background-color: #008ba3;
+  }
+  
+  button:disabled {
+   background-color: #cccccc;
+   cursor: not-allowed;
+  }
+  
+  .status {
+   margin-top: 20px;
+   padding: 10px;
+   border-radius: 5px;
+   background-color: #e0f7fa;
+   text-align: center;
+  }
+  
+  .toast {
+   position: fixed;
+   bottom: 20px;
+   left: 50%;
+   transform: translateX(-50%);
+   background-color: rgba(0, 0, 0, 0.7);
+   color: white;
+   padding: 10px 20px;
+   border-radius: 5px;
+   z-index: 100;
+   opacity: 0;
+   transition: opacity 0.3s ease;
+  }
+  
+  .toast.show {
+   opacity: 1;
+  }
+  
+  /* Green box around hand when centered */
+  .hand-box {
+   position: absolute;
+   border: 3px solid green;
+   border-radius: 10px;
+   pointer-events: none;
+   z-index: 5;
+   display: none;
+  }
+  
+  .hand-centered-indicator {
+   position: absolute;
+   top: 20px;
+   right: 20px;
+   background-color: rgba(0, 200, 0, 0.7);
+   color: white;
+   padding: 10px 15px;
+   border-radius: 5px;
+   font-weight: bold;
+   display: none;
+  }
+ </style>
+</head>
+<body>
+ <div class="container">
+  <div class="sidebar">
+   <h2>AR Ring Try-On</h2>
+   <div class="ring-selection">
+    <h3>Ring Selection</h3>
+    <div class="ring-option selected" data-ring="gold">
+     <div class="ring-preview">
+      <img src="https://picsum.photos/seed/goldring/80/80.jpg" alt="Gold Ring">
+     </div>
+     <span>Gold Ring</span>
+    </div>
+    <div class="ring-option" data-ring="silver">
+     <div class="ring-preview">
+      <img src="https://picsum.photos/seed/silverring/80/80.jpg" alt="Silver Ring">
+     </div>
+     <span>Silver Ring</span>
+    </div>
+    <div class="ring-option" data-ring="diamond">
+     <div class="ring-preview">
+      <img src="https://picsum.photos/seed/diamondring/80/80.jpg" alt="Diamond Ring">
+     </div>
+     <span>Diamond Ring</span>
+    </div>
+    <div class="ring-option" data-ring="platinum">
+     <div class="ring-preview">
+      <img src="https://picsum.photos/seed/platinumring/80/80.jpg" alt="Platinum Ring">
+     </div>
+     <span>Platinum Ring</span>
+    </div>
+   </div>
+   <div class="controls">
+    <button id="start-camera">Start Camera</button>
+    <button id="capture-photo" disabled>Capture Photo</button>
+    <button id="reset" disabled>Reset</button>
+   </div>
+   <div class="status" id="status">
+    Ready to start
+   </div>
+  </div>
+  <div class="main-content">
+   <video id="input-video" autoplay playsinline style="display: none;"></video>
+   <canvas id="output-canvas"></canvas>
+   <!-- Green box around hand when centered -->
+   <div class="hand-box" id="hand-box"></div>
+   <div class="hand-centered-indicator" id="hand-centered-indicator">Hand Centered!</div>
+  </div>
+ </div>
+ <div class="toast" id="toast"></div>
+
+ <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+ <script>
+  // DOM elements
+  const videoElement = document.getElementById('input-video');
+  const canvasElement = document.getElementById('output-canvas');
+  const canvasCtx = canvasElement.getContext('2d');
+  const startCameraButton = document.getElementById('start-camera');
+  const capturePhotoButton = document.getElementById('capture-photo');
+  const resetButton = document.getElementById('reset');
+  const statusElement = document.getElementById('status');
+  const toastElement = document.getElementById('toast');
+  const ringOptions = document.querySelectorAll('.ring-option');
+  const handBox = document.getElementById('hand-box');
+  const handCenteredIndicator = document.getElementById('hand-centered-indicator');
+  
+  // App state
+  let camera = null;
+  let hands = null;
+  let isHandCentered = false;
+  let selectedRing = 'gold';
+  let isCapturing = false;
+  
+  // Ring models (simplified for this example)
+  const ringModels = {
+    gold: { color: '#FFD700', width: 8, height: 5 },
+    silver: { color: '#C0C0C0', width: 8, height: 5 },
+    diamond: { color: '#B9F2FF', width: 9, height: 6 },
+    platinum: { color: '#E5E4E2', width: 8, height: 5 }
+  };
+  
+  // Initialize the application
+  function init() {
+    // Set up event listeners
+    startCameraButton.addEventListener('click', startCamera);
+    capturePhotoButton.addEventListener('click', capturePhoto);
+    resetButton.addEventListener('click', resetApp);
+    
+    // Ring selection
+    ringOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        ringOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedRing = option.dataset.ring;
+        showToast(`Selected ${selectedRing} ring`);
+      });
+    });
+    
+    // Resize canvas to match display size
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+  }
+  
+  // Resize canvas to match display size
+  function resizeCanvas() {
+    const displayWidth = canvasElement.clientWidth;
+    const displayHeight = canvasElement.clientHeight;
+    
+    if (canvasElement.width !== displayWidth || canvasElement.height !== displayHeight) {
+      canvasElement.width = displayWidth;
+      canvasElement.height = displayHeight;
+    }
+  }
+  
+  // Start the camera and hand tracking
+  async function startCamera() {
+    try {
+      statusElement.textContent = 'Starting camera...';
+      
+      // Initialize MediaPipe Hands
+      hands = new Hands({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }
+      });
+      
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      
+      hands.onResults(onHandResults);
+      
+      // Initialize camera
+      camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await hands.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720
+      });
+      
+      await camera.start();
+      
+      // Update UI
+      startCameraButton.disabled = true;
+      capturePhotoButton.disabled = false;
+      resetButton.disabled = false;
+      statusElement.textContent = 'Camera started. Try on a ring!';
+      
+      showToast('Camera started successfully');
+    } catch (error) {
+      console.error('Error starting camera:', error);
+      statusElement.textContent = 'Error starting camera. Please try again.';
+      showToast('Error starting camera', true);
+    }
+  }
+  
+  // Handle hand tracking results
+  function onHandResults(results) {
+    // Clear canvas
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw camera feed
+    canvasCtx.drawImage(
+      results.image, 0, 0, canvasElement.width, canvasElement.height);
+    
+    // Check if hand is detected
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      const landmarks = results.multiHandLandmarks[0];
+      
+      // Draw hand landmarks
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                     {color: '#00FF00', lineWidth: 2});
+      drawLandmarks(canvasCtx, landmarks,
+                    {color: '#FF0000', lineWidth: 1, radius: 3});
+      
+      // Get ring finger position (landmark 16 is the tip of the ring finger)
+      const ringFingerTip = landmarks[16];
+      
+      // Draw the selected ring on the ring finger
+      drawRing(ringFingerTip);
+      
+      // Check if hand is centered in the frame
+      checkIfHandCentered(landmarks);
+    } else {
+      // Hide hand box if no hand is detected
+      handBox.style.display = 'none';
+      handCenteredIndicator.style.display = 'none';
+      isHandCentered = false;
+    }
+    
+    canvasCtx.restore();
+  }
+  
+  // Draw a ring on the ring finger
+  function drawRing(ringFingerTip) {
+    const ring = ringModels[selectedRing];
+    
+    // Calculate ring position and size
+    const x = ringFingerTip.x * canvasElement.width;
+    const y = ringFingerTip.y * canvasElement.height;
+    const scale = 0.8; // Scale factor to make the ring look proportional
+    
+    // Draw ring
+    canvasCtx.beginPath();
+    canvasCtx.ellipse(
+      x, y,
+      ring.width * scale,
+      ring.height * scale,
+      0, 0, 2 * Math.PI
+    );
+    canvasCtx.strokeStyle = ring.color;
+    canvasCtx.lineWidth = 4;
+    canvasCtx.stroke();
+    
+    // Add some detail to the ring
+    canvasCtx.beginPath();
+    canvasCtx.ellipse(
+      x, y,
+      ring.width * scale * 0.8,
+      ring.height * scale * 0.8,
+      0, 0, 2 * Math.PI
+    );
+    canvasCtx.strokeStyle = ring.color;
+    canvasCtx.lineWidth = 2;
+    canvasCtx.stroke();
+  }
+  
+  // Check if hand is centered in the frame
+  function checkIfHandCentered(landmarks) {
+    // Use the wrist position (landmark 0) as a reference for the hand position
+    const wrist = landmarks[0];
+    
+    // Calculate hand position relative to the center of the frame
+    const centerX = canvasElement.width / 2;
+    const centerY = canvasElement.height / 2;
+    
+    const handX = wrist.x * canvasElement.width;
+    const handY = wrist.y * canvasElement.height;
+    
+    // Calculate distance from center
+    const distanceFromCenter = Math.sqrt(
+      Math.pow(handX - centerX, 2) + Math.pow(handY - centerY, 2)
+    );
+    
+    // Define a threshold for what we consider "centered"
+    const centerThreshold = Math.min(canvasElement.width, canvasElement.height) * 0.2;
+    
+    // Check if hand is centered
+    const newIsHandCentered = distanceFromCenter < centerThreshold;
+    
+    // If the centered state has changed, update the UI
+    if (newIsHandCentered !== isHandCentered) {
+      isHandCentered = newIsHandCentered;
+      
+      if (isHandCentered) {
+        // Show green box around hand
+        showHandBox(landmarks);
+        handCenteredIndicator.style.display = 'block';
+        showToast('Hand centered! Perfect for taking a photo.');
+      } else {
+        // Hide green box
+        handBox.style.display = 'none';
+        handCenteredIndicator.style.display = 'none';
+      }
+    }
+  }
+  
+  // Show green box around hand
+  function showHandBox(landmarks) {
+    // Find the bounding box around all hand landmarks
+    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    
+    for (const landmark of landmarks) {
+      minX = Math.min(minX, landmark.x);
+      minY = Math.min(minY, landmark.y);
+      maxX = Math.max(maxX, landmark.x);
+      maxY = Math.max(maxY, landmark.y);
+    }
+    
+    // Add some padding
+    const padding = 0.05;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+    
+    // Convert to canvas coordinates
+    const boxX = minX * canvasElement.width;
+    const boxY = minY * canvasElement.height;
+    const boxWidth = (maxX - minX) * canvasElement.width;
+    const boxHeight = (maxY - minY) * canvasElement.height;
+    
+    // Update hand box position and size
+    handBox.style.left = `${boxX}px`;
+    handBox.style.top = `${boxY}px`;
+    handBox.style.width = `${boxWidth}px`;
+    handBox.style.height = `${boxHeight}px`;
+    handBox.style.display = 'block';
+  }
+  
+  // Capture a photo
+  function capturePhoto() {
+    if (!isCapturing && isHandCentered) {
+      isCapturing = true;
+      capturePhotoButton.disabled = true;
+      statusElement.textContent = 'Capturing photo...';
+      
+      // Create a temporary link to download the image
+      const link = document.createElement('a');
+      link.download = `ar-ring-try-on-${Date.now()}.png`;
+      link.href = canvasElement.toDataURL('image/png');
+      
+      // Trigger download
+      link.click();
+      
+      // Update UI
+      statusElement.textContent = 'Photo captured! You can reset to try again.';
+      showToast('Photo captured successfully');
+      
+      // Reset capturing state after a short delay
+      setTimeout(() => {
+        isCapturing = false;
+        capturePhotoButton.disabled = false;
+      }, 1000);
+    } else if (!isHandCentered) {
+      showToast('Please center your hand before taking a photo', true);
+    }
+  }
+  
+  // Reset the application
+  function resetApp() {
+    // Reset UI
+    startCameraButton.disabled = false;
+    capturePhotoButton.disabled = true;
+    resetButton.disabled = true;
+    statusElement.textContent = 'Ready to start';
+    
+    // Stop camera
+    if (camera) {
+      camera.stop();
+      camera = null;
+    }
+    
+    // Clear canvas
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Hide hand box
+    handBox.style.display = 'none';
+    handCenteredIndicator.style.display = 'none';
+    
+    showToast('Application reset');
+  }
+  
+  // Show toast message
+  function showToast(message, isError = false) {
+    toastElement.textContent = message;
+    toastElement.style.backgroundColor = isError ? 'rgba(255, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+    toastElement.classList.add('show');
+    
+    setTimeout(() => {
+      toastElement.classList.remove('show');
+    }, 3000);
+  }
+  
+  // Helper functions for drawing hand landmarks
+  function drawLandmarks(ctx, landmarks, options) {
+    for (const landmark of landmarks) {
+      ctx.beginPath();
+      ctx.arc(
+        landmark.x * canvasElement.width,
+        landmark.y * canvasElement.height,
+        options.radius,
+        0, 2 * Math.PI);
+      ctx.fillStyle = options.color;
+      ctx.fill();
+    }
+  }
+  
+  function drawConnectors(ctx, landmarks, connections, options) {
+    for (const connection of connections) {
+      const [start, end] = connection;
+      ctx.beginPath();
+      ctx.moveTo(
+        landmarks[start].x * canvasElement.width,
+        landmarks[start].y * canvasElement.height);
+      ctx.lineTo(
+        landmarks[end].x * canvasElement.width,
+        landmarks[end].y * canvasElement.height);
+      ctx.strokeStyle = options.color;
+      ctx.lineWidth = options.lineWidth;
+      ctx.stroke();
+    }
+  }
+  
+  // Hand connections for drawing
+  const HAND_CONNECTIONS = [
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    [0, 5], [5, 6], [6, 7], [7, 8],
+    [0, 9], [9, 10], [10, 11], [11, 12],
+    [0, 13], [13, 14], [14, 15], [15, 16],
+    [0, 17], [17, 18], [18, 19], [19, 20]
+  ];
+  
+  // Initialize the application
+  init();
+ </script>
+</body>
+</html>

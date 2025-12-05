@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D World Map with Clickable Countries</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        input[type="range"] {
+            width: 180px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            background: #00d4ff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 3px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        button:hover {
+            background: linear-gradient(45deg, #0099cc, #007799);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+        }
+        
+        button.active {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        #countryInfo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-width: 250px;
+            max-width: 350px;
+            display: none;
+        }
+        
+        #countryInfo h3 {
+            margin: 0 0 15px 0;
+            color: #00d4ff;
+            font-size: 18px;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 5px;
+        }
+        
+        .country-detail {
+            margin: 8px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .country-detail strong {
+            color: #00d4ff;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #clickPrompt {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #00d4ff;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        .highlight {
+            color: #00d4ff !important;
+            text-shadow: 0 0 10px #00d4ff;
+        }
+
+        .country-label {
+            position: absolute;
+            color: #00d4ff;
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 5px 10px;
+            border-radius: 15px;
+            border: 1px solid #00d4ff;
+            display: none;
+            pointer-events: none;
+            z-index: 1000;
+            text-shadow: 0 0 10px #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <div class="control-group">
+                <label>Rotation Speed:</label>
+                <input type="range" id="rotationSpeed" min="0" max="0.03" step="0.001" value="0.008">
+            </div>
+            <div class="control-group">
+                <button id="toggleRotation">Pause Rotation</button>
+                <button id="toggleWireframe">Wireframe</button>
+                <button id="toggleStars">Toggle Stars</button>
+            </div>
+            <div class="control-group">
+                <label>Map Style:</label>
+                <button id="earthTexture" class="active">Earth View</button>
+                <button id="nightTexture">Night Lights</button>
+                <button id="topoTexture">Topographic</button>
+            </div>
+            <div class="control-group">
+                <button id="resetView">Reset View</button>
+                <button id="randomCountry">Random Country</button>
+            </div>
+        </div>
+        
+        <div id="countryInfo">
+            <h3 id="countryName">Country Information</h3>
+            <div id="countryDetails"></div>
+        </div>
+        
+        <div id="clickPrompt">
+            🌍 Click on any country to learn more!
+        </div>
+        
+        <div id="info">
+            <strong class="highlight">3D Interactive World Map</strong><br>
+            🖱️ Mouse: Rotate | 🖞 Scroll: Zoom<br>
+            🎯 Click countries for information<br>
+            🌐 Continuous 360° rotation enabled
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, earth, stars, countries = [];
+        let isRotating = true;
+        let rotationSpeed = 0.008;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let selectedCountry = null;
+        let time = 0;
+
+        // Country data with approximate positions (longitude, latitude)
+        const countryData = [
+            { name: "United States", lat: 40, lng: -95, capital: "Washington D.C.", population: "331 million", continent: "North America", currency: "USD", language: "English" },
+            { name: "Canada", lat: 60, lng: -105, capital: "Ottawa", population: "38 million", continent: "North America", currency: "CAD", language: "English, French" },
+            { name: "Mexico", lat: 23, lng: -100, capital: "Mexico City", population: "128 million", continent: "North America", currency: "MXN", language: "Spanish" },
+            { name: "Brazil", lat: -15, lng: -55, capital: "Brasília", population: "215 million", continent: "South America", currency: "BRL", language: "Portuguese" },
+            { name: "Argentina", lat: -35, lng: -65, capital: "Buenos Aires", population: "45 million", continent: "South America", currency: "ARS", language: "Spanish" },
+            { name: "United Kingdom", lat: 54, lng: -2, capital: "London", population: "67 million", continent: "Europe", currency: "GBP", language: "English" },
+            { name: "France", lat: 46, lng: 2, capital: "Paris", population: "67 million", continent: "Europe", currency: "EUR", language: "French" },
+            { name: "Germany", lat: 51, lng: 9, capital: "Berlin", population: "83 million", continent: "Europe", currency: "EUR", language: "German" },
+            { name: "Italy", lat: 42, lng: 12, capital: "Rome", population: "60 million", continent: "Europe", currency: "EUR", language: "Italian" },
+            { name: "Spain", lat: 40, lng: -4, capital: "Madrid", population: "47 million", continent: "Europe", currency: "EUR", language: "Spanish" },
+            { name: "Russia", lat: 60, lng: 100, capital: "Moscow", population: "146 million", continent: "Asia/Europe", currency: "RUB", language: "Russian" },
+            { name: "China", lat: 35, lng: 105, capital: "Beijing", population: "1.4 billion", continent: "Asia", currency: "CNY", language: "Mandarin" },
+            { name: "Japan", lat: 36, lng: 138, capital: "Tokyo", population: "125 million", continent: "Asia", currency: "JPY", language: "Japanese" },
+            { name: "India", lat: 20, lng: 77, capital: "New Delhi", population: "1.4 billion", continent: "Asia", currency: "INR", language: "Hindi, English" },
+            { name: "Australia", lat: -27, lng: 133, capital: "Canberra", population: "26 million", continent: "Oceania", currency: "AUD", language: "English" },
+            { name: "South Africa", lat: -29, lng: 24, capital: "Cape Town", population: "60 million", continent: "Africa", currency: "ZAR", language: "Afrikaans, English" },
+            { name: "Egypt", lat: 26, lng: 30, capital: "Cairo", population: "104 million", continent: "Africa", currency: "EGP", language: "Arabic" },
+            { name: "Nigeria", lat: 10, lng: 8, capital: "Abuja", population: "218 million", continent: "Africa", currency: "NGN", language: "English" },
+            { name: "Kenya", lat: 1, lng: 38, capital: "Nairobi", population: "54 million", continent: "Africa", currency: "KES", language: "Swahili, English" },
+            { name: "Saudi Arabia", lat: 24, lng: 45, capital: "Riyadh", population: "35 million", continent: "Asia", currency: "SAR", language: "Arabic" }
+        ];
+
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 6);
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            // Create Earth
+            createEarth();
+            
+            // Create countries
+            createCountries();
+
+            // Create stars
+            createStars();
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            directionalLight.position.set(5, 3, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Start animation
+            animate();
+        }
+
+        function createEarth() {
+            const earthGeometry = new THREE.SphereGeometry(2, 128, 128);
+            
+            const earthTexture = createEarthTexture();
+            const nightTexture = createNightTexture();
+            const topoTexture = createTopoTexture();
+
+            const earthMaterial = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                shininess: 0.2,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            earth.userData = { earthTexture, nightTexture, topoTexture };
+            scene.add(earth);
+        }
+
+        function createCountries() {
+            countryData.forEach((country, index) => {
+                // Convert lat/lng to 3D coordinates
+                const phi = (90 - country.lat) * Math.PI / 180;
+                const theta = (country.lng + 180) * Math.PI / 180;
+                
+                const x = 2.05 * Math.sin(phi) * Math.cos(theta);
+                const y = 2.05 * Math.cos(phi);
+                const z = 2.05 * Math.sin(phi) * Math.sin(theta);
+
+                // Create country marker
+                const markerGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+                const markerMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x00d4ff,
+                    emissive: 0x001122,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                marker.position.set(x, y, z);
+                marker.userData = { 
+                    country: country, 
+                    originalColor: 0x00d4ff,
+                    originalScale: 1
+                };
+
+                // Add pulsing animation
+                marker.userData.pulsePhase = Math.random() * Math.PI * 2;
+
+                countries.push(marker);
+                scene.add(marker);
+
+                // Create country name label (hidden by default)
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'country-label';
+                labelDiv.textContent = country.name;
+                labelDiv.style.cssText = `
+                    position: absolute;
+                    color: #00d4ff;
+                    font-size: 12px;
+                    font-weight: bold;
+                    background: rgba(0, 0, 0, 0.8);
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    border: 1px solid #00d4ff;
+                    display: none;
+                    pointer-events: none;
+                    z-index: 1000;
+                    text-shadow: 0 0 10px #00d4ff;
+                `;
+                document.body.appendChild(labelDiv);
+                marker.userData.label = labelDiv;
+            });
+        }
+
+        function createEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            // Ocean gradient
+            const oceanGradient = ctx.createLinearGradient(0, 0, 0, 1024);
+            oceanGradient.addColorStop(0, '#1e3c72');
+            oceanGradient.addColorStop(0.5, '#2a5298');
+            oceanGradient.addColorStop(1, '#1e3c72');
+            ctx.fillStyle = oceanGradient;
+            ctx.fillRect(0, 0, 2048, 1024);
+
+            // Enhanced continents
+            const continents = [
+                { x: 350, y: 280, w: 180, h: 120, color: '#228B22' },
+                { x: 250, y: 350, w: 80, h: 60, color: '#32CD32' },
+                { x: 450, y: 550, w: 80, h: 200, color: '#228B22' },
+                { x: 950, y: 230, w: 120, h: 80, color: '#228B22' },
+                { x: 1000, y: 400, w: 100, h: 180, color: '#228B22' },
+                { x: 1200, y: 200, w: 300, h: 160, color: '#228B22' },
+                { x: 1300, y: 380, w: 150, h: 100, color: '#32CD32' },
+                { x: 1600, y: 650, w: 120, h: 80, color: '#228B22' },
+                { x: 0, y: 900, w: 2048, h: 124, color: '#F0F8FF' }
+            ];
+
+            continents.forEach(continent => {
+                ctx.fillStyle = continent.color;
+                ctx.fillRect(continent.x, continent.y, continent.w, continent.h);
+                
+                ctx.fillStyle = 'rgba(0, 100, 0, 0.3)';
+                for (let i = 0; i < 20; i++) {
+                    const x = continent.x + Math.random() * continent.w;
+                    const y = continent.y + Math.random() * continent.h;
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.random() * 5 + 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createNightTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 2048, 1024);
+
+            const cities = [
+                { x: 350, y: 280, density: 50 },
+                { x: 450, y: 550, density: 30 },
+                { x: 950, y: 230, density: 60 },
+                { x: 1000, y: 400, density: 25 },
+                { x: 1200, y: 200, density: 80 },
+                { x: 1600, y: 650, density: 20 }
+            ];
+
+            cities.forEach(city => {
+                for (let i = 0; i < city.density; i++) {
+                    const x = city.x + (Math.random() - 0.5) * 200;
+                    const y = city.y + (Math.random() - 0.5) * 100;
+                    const brightness = Math.random();
+                    
+                    ctx.fillStyle = `rgba(255, 255, ${Math.floor(100 + brightness * 155)}, ${0.6 + brightness * 0.4})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.random() * 3 + 1, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = `rgba(255, 255, 0, ${0.1 + brightness * 0.2})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.random() * 8 + 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createTopoTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            for (let x = 0; x < 2048; x += 2) {
+                for (let y = 0; y < 1024; y += 2) {
+                    const noise = Math.sin(x * 0.003) * Math.cos(y * 0.005) * 0.5 + 0.5;
+                    const elevation = Math.sin(x * 0.001) * Math.sin(y * 0.002) * 0.3 + 0.7;
+                    
+                    let r, g, b;
+                    if (elevation < 0.3) {
+                        r = 0; g = Math.floor(50 + elevation * 100); b = Math.floor(100 + elevation * 155);
+                    } else if (elevation < 0.5) {
+                        r = 0; g = Math.floor(100 + elevation * 100); b = 200;
+                    } else if (elevation < 0.6) {
+                        r = Math.floor(50 + elevation * 100); g = Math.floor(150 + elevation * 105); b = Math.floor(50 + elevation * 50);
+                    } else {
+                        r = Math.floor(100 + elevation * 100); g = Math.floor(80 + elevation * 80); b = Math.floor(60 + elevation * 60);
+                    }
+                    
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.5,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const starsVertices = [];
+            for (let i = 0; i < 2000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+
+        function setupEventListeners() {
+            document.addEventListener('mousemove', onMouseMove, false);
+            document.addEventListener('wheel', onWheel, false);
+            document.addEventListener('click', onMouseClick, false);
+
+            document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+                rotationSpeed = parseFloat(e.target.value);
+            });
+
+            document.getElementById('toggleRotation').addEventListener('click', (e) => {
+                isRotating = !isRotating;
+                e.target.textContent = isRotating ? 'Pause Rotation' : 'Resume Rotation';
+                e.target.classList.toggle('active');
+            });
+
+            document.getElementById('toggleWireframe').addEventListener('click', (e) => {
+                earth.material.wireframe = !earth.material.wireframe;
+                e.target.classList.toggle('active');
+            });
+
+            document.getElementById('toggleStars').addEventListener('click', (e) => {
+                stars.visible = !stars.visible;
+                e.target.classList.toggle('active');
+            });
+
+            const textureButtons = ['earthTexture', 'nightTexture', 'topoTexture'];
+            textureButtons.forEach(id => {
+                document.getElementById(id).addEventListener('click', (e) => {
+                    textureButtons.forEach(btnId => {
+                        document.getElementById(btnId).classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                    
+                    switch(id) {
+                        case 'earthTexture':
+                            earth.material.map = earth.userData.earthTexture;
+                            break;
+                        case 'nightTexture':
+                            earth.material.map = earth.userData.nightTexture;
+                            break;
+                        case 'topoTexture':
+                            earth.material.map = earth.userData.topoTexture;
+                            break;
+                    }
+                    earth.material.needsUpdate = true;
+                });
+            });
+
+            document.getElementById('resetView').addEventListener('click', () => {
+                camera.position.set(0, 0, 6);
+                targetRotationX = 0;
+                targetRotationY = 0;
+                hideCountryInfo();
+            });
+
+            document.getElementById('randomCountry').addEventListener('click', () => {
+                const randomIndex = Math.floor(Math.random() * countries.length);
+                const randomCountry = countries[randomIndex];
+                selectCountry(randomCountry);
+                
+                const targetPosition = randomCountry.position.clone().multiplyScalar(2);
+                animateCameraTo(targetPosition);
+            });
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onMouseMove(event) {
+            mouseX = (event.clientX - windowHalfX) / windowHalfX;
+            mouseY = (event.clientY - windowHalfY) / windowHalfY;
+            
+            if (!isRotating) {
+                targetRotationX = mouseY * 0.3;
+                targetRotationY = mouseX * 0.3;
+            }
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(countries);
+            
+            countries.forEach(country => {
+                country.material.emissive.setHex(0x001122);
+                country.scale.set(1, 1, 1);
+                country.userData.label.style.display = 'none';
+            });
+
+            if (intersects.length > 0) {
+                const country = intersects[0].object;
+                country.material.emissive.setHex(0x444444);
+                country.scale.set(1.5, 1.5, 1.5);
+                
+                const label = country.userData.label;
+                label.style.display = 'block';
+                label.style.left = event.clientX + 10 + 'px';
+                label.style.top = event.clientY - 30 + 'px';
+                
+                document.body.style.cursor = 'pointer';
+            } else {
+                document.body.style.cursor = 'crosshair';
+            }
+        }
+
+        function onMouseClick(event) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(countries);
+
+            if (intersects.length > 0) {
+                const country = intersects[0].object;
+                selectCountry(country);
+                
+                // Animate camera to focus on the selected country
+                const targetPosition = country.position.clone().multiplyScalar(2);
+                animateCameraTo(targetPosition);
+            } else {
+                hideCountryInfo();
+            }
+        }
+
+        function onWheel(event) {
+            event.preventDefault();
+            
+            const zoomSpeed = 0.1;
+            const minDistance = 3;
+            const maxDistance = 15;
+            
+            camera.position.multiplyScalar(1 + event.deltaY * 0.001 * zoomSpeed);
+            
+            const distance = camera.position.length();
+            if (distance < minDistance) {
+                camera.position.normalize().multiplyScalar(minDistance);
+            } else if (distance > maxDistance) {
+                camera.position.normalize().multiplyScalar(maxDistance);
+            }
+        }
+
+        function selectCountry(countryMesh) {
+            if (selectedCountry) {
+                selectedCountry.material.color.setHex(selectedCountry.userData.originalColor);
+            }
+
+            selectedCountry = countryMesh;
+            selectedCountry.material.color.setHex(0xff6b6b);
+            
+            showCountryInfo(countryMesh.userData.country);
+            document.getElementById('clickPrompt').style.display = 'none';
+        }
+
+        function showCountryInfo(country) {
+            const infoPanel = document.getElementById('countryInfo');
+            const nameElement = document.getElementById('countryName');
+            const detailsElement = document.getElementById('countryDetails');
+
+            nameElement.textContent = country.name;
+            detailsElement.innerHTML = `
+                <div class="country-detail"><strong>Capital:</strong> ${country.capital}</div>
+                <div class="country-detail"><strong>Population:</strong> ${country.population}</div>
+                <div class="country-detail"><strong>Continent:</strong> ${country.continent}</div>
+                <div class="country-detail"><strong>Currency:</strong> ${country.currency}</div>
+                <div class="country-detail"><strong>Language:</strong> ${country.language}</div>
+                <div class="country-detail"><strong>Coordinates:</strong> ${country.lat}°, ${country.lng}°</div>
+            `;
+
+            infoPanel.style.display = 'block';
+        }
+
+        function hideCountryInfo() {
+            document.getElementById('countryInfo').style.display = 'none';
+            document.getElementById('clickPrompt').style.display = 'block';
+            if (selectedCountry) {
+                selectedCountry.material.color.setHex(selectedCountry.userData.originalColor);
+                selectedCountry = null;
+            }
+        }
+
+        function animateCameraTo(targetPosition) {
+            const duration = 1000; // Animation duration in milliseconds
+            const startPosition = camera.position.clone();
+            const startTime = Date.now();
+            
+            const animation = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Ease in-out function for smooth animation
+                const easeProgress = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                
+                // Interpolate camera position
+                camera.position.lerpVectors(
+                    startPosition,
+                    targetPosition,
+                    easeProgress
+                );
+                
+                // Make camera look at the earth center
+                camera.lookAt(0, 0, 0);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animation);
+                }
+            };
+            
+            animation();
+        }
+
+        function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Earth rotation
+            if (isRotating) {
+                earth.rotation.y += rotationSpeed;
+            } else {
+                // Smooth rotation when dragging
+                earth.rotation.x += (targetRotationX - earth.rotation.x) * 0.1;
+                earth.rotation.y += (targetRotationY - earth.rotation.y) * 0.1;
+            }
+
+            // Country pulsing animation
+            countries.forEach(country => {
+                const pulse = Math.sin(time + country.userData.pulsePhase) * 0.1 + 1;
+                country.scale.set(pulse, pulse, pulse);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>

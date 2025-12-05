@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism Weather Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated Background Particles */
+        .bg-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Weather Card - Initial State */
+        .weather-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Animated State */
+        .weather-card.animated {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #00f5ff, #ff00ff, #00ff00, #ffff00) 1;
+            box-shadow: 
+                0 0 30px rgba(0, 245, 255, 0.3),
+                0 0 60px rgba(255, 0, 255, 0.2),
+                inset 0 0 30px rgba(255, 255, 255, 0.1);
+            animation: cardGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes cardGlow {
+            0% { 
+                box-shadow: 
+                    0 0 30px rgba(0, 245, 255, 0.3),
+                    0 0 60px rgba(255, 0, 255, 0.2),
+                    inset 0 0 30px rgba(255, 255, 255, 0.1);
+            }
+            100% { 
+                box-shadow: 
+                    0 0 50px rgba(0, 245, 255, 0.5),
+                    0 0 80px rgba(255, 0, 255, 0.3),
+                    inset 0 0 40px rgba(255, 255, 255, 0.15);
+            }
+        }
+
+        /* Neon Border Animation */
+        .weather-card.animated::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00f5ff, #ff00ff, #00ff00, #ffff00, #00f5ff);
+            border-radius: 22px;
+            z-index: -1;
+            animation: borderRotate 4s linear infinite;
+            opacity: 0;
+            animation-delay: 0.5s;
+            animation-fill-mode: forwards;
+        }
+
+        @keyframes borderRotate {
+            0% { 
+                background: linear-gradient(45deg, #00f5ff, #ff00ff, #00ff00, #ffff00, #00f5ff);
+                opacity: 0.8;
+            }
+            25% { 
+                background: linear-gradient(135deg, #ff00ff, #00ff00, #ffff00, #00f5ff, #ff00ff);
+            }
+            50% { 
+                background: linear-gradient(225deg, #00ff00, #ffff00, #00f5ff, #ff00ff, #00ff00);
+            }
+            75% { 
+                background: linear-gradient(315deg, #ffff00, #00f5ff, #ff00ff, #00ff00, #ffff00);
+            }
+            100% { 
+                background: linear-gradient(45deg, #00f5ff, #ff00ff, #00ff00, #ffff00, #00f5ff);
+                opacity: 0.8;
+            }
+        }
+
+        /* Location */
+        .location {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 20px;
+            opacity: 0.9;
+            transition: all 0.6s ease;
+        }
+
+        .weather-card.animated .location {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            animation: textGlow 2s ease-in-out infinite alternate;
+        }
+
+        /* Temperature */
+        .temperature {
+            font-size: 4rem;
+            font-weight: 100;
+            margin: 20px 0;
+            transition: all 0.8s ease;
+        }
+
+        .weather-card.animated .temperature {
+            font-size: 4.5rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+            animation: temperaturePulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes temperaturePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Weather Icon */
+        .weather-icon {
+            font-size: 3rem;
+            margin: 20px 0;
+            transition: all 0.6s ease;
+            opacity: 0.8;
+        }
+
+        .weather-card.animated .weather-icon {
+            font-size: 3.5rem;
+            animation: iconFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Description */
+        .description {
+            font-size: 1.2rem;
+            font-weight: 300;
+            margin-bottom: 30px;
+            opacity: 0.8;
+            transition: all 0.6s ease;
+        }
+
+        .weather-card.animated .description {
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Weather Details */
+        .weather-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .detail-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            transition: all 0.6s ease;
+        }
+
+        .weather-card.animated .detail-item {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            animation: detailGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes detailGlow {
+            0% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+            100% { box-shadow: 0 8px 25px rgba(0, 245, 255, 0.2); }
+        }
+
+        .detail-label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Activate Button */
+        .activate-btn {
+            background: linear-gradient(45deg, #00f5ff, #ff00ff);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 15px 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .activate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 245, 255, 0.4);
+        }
+
+        .activate-btn.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        /* Text glow animation */
+        @keyframes textGlow {
+            0% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+            100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(0, 245, 255, 0.3); }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #00f5ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .weather-card {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .temperature {
+                font-size: 3rem;
+            }
+            
+            .weather-card.animated .temperature {
+                font-size: 3.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-particles"></div>
+    
+    <div class="container">
+        <div class="weather-card" id="weatherCard">
+            <div class="location" id="location">New York, NY</div>
+            
+            <div class="temperature" id="temperature">22°C</div>
+            
+            <div class="weather-icon" id="weatherIcon">☀️</div>
+            
+            <div class="description" id="description">Sunny</div>
+            
+            <div class="weather-details">
+                <div class="detail-item">
+                    <div class="detail-label">Feels Like</div>
+                    <div class="detail-value" id="feelsLike">25°C</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Humidity</div>
+                    <div class="detail-value" id="humidity">65%</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Wind Speed</div>
+                    <div class="detail-value" id="windSpeed">12 km/h</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Pressure</div>
+                    <div class="detail-value" id="pressure">1013 hPa</div>
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; font-size: 0.9rem;">Activating glassmorphism...</p>
+            </div>
+            
+            <button class="activate-btn" id="activateBtn">✨ Activate Glassmorphism</button>
+        </div>
+    </div>
+
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const particlesContainer = document.querySelector('.bg-particles');
+            
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // Random size and position
+                const size = Math.random() * 4 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                
+                // Random animation delay
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Weather data simulation
+        const weatherData = {
+            locations: [
+                { name: "New York, NY", temp: 22, icon: "☀️", desc: "Sunny", feels: 25, humidity: 65, wind: 12, pressure: 1013 },
+                { name: "London, UK", temp: 15, icon: "🌧️", desc: "Light Rain", feels: 13, humidity: 80, wind: 8, pressure: 1005 },
+                { name: "Tokyo, JP", temp: 28, icon: "⛅", desc: "Partly Cloudy", feels: 31, humidity: 70, wind: 15, pressure: 1018 },
+                { name: "Sydney, AU", temp: 19, icon: "🌤️", desc: "Mostly Sunny", feels: 21, humidity: 55, wind: 18, pressure: 1020 },
+                { name: "Dubai, UAE", temp: 35, icon: "☀️", desc: "Hot", feels: 40, humidity: 45, wind: 10, pressure: 1012 }
+            ],
+            currentIndex: 0
+        };
+
+        // Update weather display
+        function updateWeather(data) {
+            document.getElementById('location').textContent = data.name;
+            document.getElementById('temperature').textContent = data.temp + '°C';
+            document.getElementById('weatherIcon').textContent = data.icon;
+            document.getElementById('description').textContent = data.desc;
+            document.getElementById('feelsLike').textContent = data.feels + '°C';
+            document.getElementById('humidity').textContent = data.humidity + '%';
+            document.getElementById('windSpeed').textContent = data.wind + ' km/h';
+            document.getElementById('pressure').textContent = data.pressure + ' hPa';
+        }
+
+        // Cycle through weather data
+        function cycleWeather() {
+            weatherData.currentIndex = (weatherData.currentIndex + 1) % weatherData.locations.length;
+            updateWeather(weatherData.locations[weatherData.currentIndex]);
+        }
+
+        // Activate glassmorphism effect
+        function activateGlassmorphism() {
+            const card = document.getElementById('weatherCard');
+            const btn = document.getElementById('activateBtn');
+            const loading = document.getElementById('loading');
+            
+            // Hide button and show loading
+            btn.classList.add('hidden');
+            loading.classList.add('active');
+            
+            // Simulate loading delay
+            setTimeout(() => {
+                loading.classList.remove('active');
+                card.classList.add('animated');
+                
+                // Start cycling weather data
+                setInterval(cycleWeather, 4000);
+            }, 2000);
+        }
+
+        // Event listeners
+        document.getElementById('activateBtn').addEventListener('click', activateGlassmorphism);
+
+        // Initialize
+        createParticles();
+        updateWeather(weatherData.locations[0]);
+
+        // Add click handler to card for demo purposes
+        document.getElementById('weatherCard').addEventListener('click', (e) => {
+            if (e.target.id === 'activateBtn') return;
+            
+            const card = document.getElementById('weatherCard');
+            if (!card.classList.contains('animated')) {
+                activateGlassmorphism();
+            }
+        });
+    </script>
+</body>
+</html>

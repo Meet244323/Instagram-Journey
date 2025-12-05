@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS - Advanced Personal Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00d4ff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .corner-frame {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #00d4ff;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .corner-frame.top-left {
+            top: 20px;
+            left: 20px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .corner-frame.top-right {
+            top: 20px;
+            right: 20px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .corner-frame.bottom-left {
+            bottom: 20px;
+            left: 20px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .corner-frame.bottom-right {
+            bottom: 20px;
+            right: 20px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .central-interface {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00d4ff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .voice-visualizer {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            border: 2px solid #00d4ff;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .voice-waves {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0;
+            animation: wave-expand 2s ease-out infinite;
+        }
+
+        .voice-waves.active {
+            opacity: 1;
+            border: 2px solid #00d4ff;
+        }
+
+        @keyframes wave-expand {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .mic-icon {
+            font-size: 3em;
+            color: #00d4ff;
+            z-index: 3;
+            transition: all 0.3s ease;
+        }
+
+        .mic-icon.processing {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .video-container {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 250px;
+            height: 200px;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .gesture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hand-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+        }
+
+        .gesture-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #00ff00;
+            background: rgba(0, 255, 0, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .gesture-indicator.active {
+            opacity: 1;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, transparent, rgba(0, 212, 255, 0.2));
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 212, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .control-btn:hover::before {
+            left: 100%;
+        }
+
+        .response-display {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            min-height: 120px;
+            font-size: 16px;
+            line-height: 1.6;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .creation-output {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 50%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            display: none;
+            overflow: auto;
+        }
+
+        .creation-output.active {
+            display: block;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #00d4ff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 60%, 100% { opacity: 1; }
+            30% { opacity: 0.3; }
+        }
+
+        .command-history {
+            position: absolute;
+            left: 20px;
+            top: 100px;
+            width: 280px;
+            height: 450px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .command-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 5px;
+            font-size: 12px;
+            border-left: 3px solid #00d4ff;
+            transition: all 0.3s ease;
+        }
+
+        .command-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .ai-thinking {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #00d4ff;
+            display: none;
+            z-index: 5;
+        }
+
+        .ai-thinking.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+
+        .gesture-commands {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            width: 200px;
+        }
+
+        .gesture-commands h4 {
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        .gesture-commands ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .gesture-commands li {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .capability-showcase {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .capability-showcase h4 {
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        .capability-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .capability-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+
+        .capability-list li:last-child {
+            border-bottom: none;
+        }
+
+        .code-editor {
+            background: #1a1a2e;
+            color: #00d4ff;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #00d4ff;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .neural-network {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="grid-lines"></div>
+        <canvas id="particleCanvas" class="canvas-overlay"></canvas>
+        <canvas id="neuralCanvas" class="neural-network"></canvas>
+        
+        <div class="hud-overlay">
+            <div class="corner-frame top-left"></div>
+            <div class="corner-frame top-right"></div>
+            <div class="corner-frame bottom-left"></div>
+            <div class="corner-frame bottom-right"></div>
+            <div class="status-bar">
+                <span id="statusText">MEET Online - Neural Networks Active</span>
+            </div>
+        </div>
+
+        <div class="capability-showcase">
+            <h4>🚀 Advanced Capabilities</h4>
+            <ul class="capability-list">
+                <li>🎯 Voice-Controlled Creation</li>
+                <li>🤖 Real-time Gesture Recognition</li>
+                <li>💻 Code Generation & Execution</li>
+                <li>🎨 Creative Content Generation</li>
+                <li>📊 Data Analysis & Visualization</li>
+                <li>🔍 Web Search & Information</li>
+                <li>📝 Document Creation</li>
+                <li>🎵 Audio Processing</li>
+                <li>🧠 AI-Powered Responses</li>
+                <li>⚡ Real-time Processing</li>
+            </ul>
+        </div>
+
+        <div class="central-interface">
+            <div class="logo">MEET</div>
+            <div class="voice-visualizer">
+                <div class="voice-waves" id="voiceWaves"></div>
+                <div class="mic-icon" id="micIcon">🎤</div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn" id="voiceBtn">Voice Control</button>
+                <button class="control-btn" id="cameraBtn">Camera</button>
+                <button class="control-btn" id="gestureBtn">Gesture AI</button>
+                <button class="control-btn" id="createBtn">Create Mode</button>
+                <button class="control-btn" id="settingsBtn">Settings</button>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <video id="videoFeed" autoplay muted></video>
+            <canvas id="gestureCanvas" class="gesture-overlay"></canvas>
+            <div class="hand-status" id="handStatus">Initializing gesture recognition...</div>
+            <div class="gesture-indicator" id="gestureIndicator">Gesture Detected!</div>
+        </div>
+
+        <div class="gesture-commands">
+            <h4>Gesture Commands</h4>
+            <ul>
+                <li>👋 Wave: Hello/Activate</li>
+                <li>✋ Open Hand: Stop/Pause</li>
+                <li>👍 Thumbs Up: Confirm</li>
+                <li>👎 Thumbs Down: Cancel</li>
+                <li>✌️ Peace: Create Mode</li>
+                <li>👊 Fist: Execute</li>
+            </ul>
+        </div>
+
+        <div class="response-display" id="responseDisplay">
+            Welcome to Advanced MEET! I'm your AI-powered assistant with cutting-edge capabilities. Try saying "Create a website" or wave your hand to get started.
+        </div>
+
+        <div class="creation-output" id="creationOutput">
+            <button class="close-btn" id="closeBtn">×</button>
+            <div id="creationContent"></div>
+        </div>
+
+        <div class="ai-thinking" id="aiThinking">
+            <div class="loading-dots">AI Processing...</div>
+        </div>
+
+        <div class="command-history" style="display: none;">
+            <h3 style="margin-bottom: 10px; font-size: 14px;">Command History</h3>
+            <div id="commandList"></div>
+        </div>
+    </div>
+
+    <script>
+        class AdvancedJARVIS {
+            constructor() {
+                this.isListening = false;
+                this.isCameraActive = false;
+                this.isGestureActive = false;
+                this.isCreateMode = false;
+                this.recognition = null;
+                this.commands = [];
+                this.gestureRecognizer = null;
+                this.lastGesture = null;
+                this.gestureConfidence = 0;
+                this.isProcessing = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.initializeVisuals();
+                this.setupSpeechRecognition();
+                this.setupCamera();
+                this.initializeGestureRecognition();
+                this.startStatusUpdates();
+                this.startNeuralAnimation();
+            }
+
+            initializeElements() {
+                this.voiceBtn = document.getElementById('voiceBtn');
+                this.cameraBtn = document.getElementById('cameraBtn');
+                this.gestureBtn = document.getElementById('gestureBtn');
+                this.createBtn = document.getElementById('createBtn');
+                this.responseDisplay = document.getElementById('responseDisplay');
+                this.commandList = document.getElementById('commandList');
+                this.statusText = document.getElementById('statusText');
+                this.handStatus = document.getElementById('handStatus');
+                this.gestureIndicator = document.getElementById('gestureIndicator');
+                this.voiceWaves = document.getElementById('voiceWaves');
+                this.micIcon = document.getElementById('micIcon');
+                this.videoFeed = document.getElementById('videoFeed');
+                this.gestureCanvas = document.getElementById('gestureCanvas');
+                this.creationOutput = document.getElementById('creationOutput');
+                this.creationContent = document.getElementById('creationContent');
+                this.aiThinking = document.getElementById('aiThinking');
+                this.closeBtn = document.getElementById('closeBtn');
+            }
+
+            setupEventListeners() {
+                this.voiceBtn.addEventListener('click', () => this.toggleVoice());
+                this.cameraBtn.addEventListener('click', () => this.toggleCamera());
+                this.gestureBtn.addEventListener('click', () => this.toggleGesture());
+                this.createBtn.addEventListener('click', () => this.toggleCreateMode());
+                this.closeBtn.addEventListener('click', () => this.closeCreationOutput());
+                
+                // Advanced keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === ' ' && e.ctrlKey) {
+                        e.preventDefault();
+                        this.toggleVoice();
+                    } else if (e.key === 'c' && e.ctrlKey && e.shiftKey) {
+                        e.preventDefault();
+                        this.toggleCreateMode();
+                    } else if (e.key === 'g' && e.ctrlKey) {
+                        e.preventDefault();
+                        this.toggleGesture();
+                    }
+                });
+            }
+
+            setupSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = true;
+                    this.recognition.lang = 'en-US';
+
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                        this.voiceWaves.classList.add('active');
+                        this.micIcon.classList.add('processing');
+                        this.statusText.textContent = 'Neural networks processing voice input...';
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        let interimTranscript = '';
+                        
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            if (event.results[i].isFinal) {
+                                finalTranscript += event.results[i][0].transcript;
+                            } else {
+                                interimTranscript += event.results[i][0].transcript;
+                            }
+                        }
+                        
+                        if (interimTranscript) {
+                            this.displayResponse(`Listening: ${interimTranscript}`);
+                        }
+                        
+                        if (finalTranscript.trim()) {
+                            this.processAdvancedCommand(finalTranscript.trim());
+                        }
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isListening = false;
+                        this.voiceWaves.classList.remove('active');
+                        this.micIcon.classList.remove('processing');
+                        this.statusText.textContent = 'JARVIS Online - Neural Networks Active';
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        this.displayResponse(`Speech recognition error: ${event.error}`);
+                    };
+                } else {
+                    this.displayResponse('Advanced speech recognition not supported in this browser');
+                }
+            }
+
+            async setupCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: 640, 
+                            height: 480,
+                            facingMode: 'user'
+                        } 
+                    });
+                    this.videoFeed.srcObject = stream;
+                    this.isCameraActive = true;
+                    this.handStatus.textContent = 'Camera active - Initializing AI vision...';
+                } catch (error) {
+                    console.error('Camera access denied:', error);
+                    this.handStatus.textContent = 'Camera access denied';
+                }
+            }
+
+            initializeGestureRecognition() {
+                // Enhanced gesture recognition with hand tracking
+                this.gestureCanvas.width = 250;
+                this.gestureCanvas.height = 200;
+                const ctx = this.gestureCanvas.getContext('2d');
+                
+                // Simulate advanced gesture recognition
+                this.gesturePatterns = {
+                    wave: { pattern: 'wave', confidence: 0.95, action: 'hello' },
+                    openHand: { pattern: 'open_hand', confidence: 0.90, action: 'stop' },
+                    thumbsUp: { pattern: 'thumbs_up', confidence: 0.88, action: 'confirm' },
+                    thumbsDown: { pattern: 'thumbs_down', confidence: 0.85, action: 'cancel' },
+                    peace: { pattern: 'peace', confidence: 0.82, action: 'create' },
+                    fist: { pattern: 'fist', confidence: 0.87, action: 'execute' }
+                };
+                
+                this.startGestureDetection();
+            }
+
+            startGestureDetection() {
+                setInterval(() => {
+                    if (!this.isGestureActive || !this.isCameraActive) return;
+                    
+                    // Simulate gesture detection with varying confidence
+                    const gestureNames = Object.keys(this.gesturePatterns);
+                    
+                    if (Math.random() > 0.7) {
+                        const randomGesture = gestureNames[Math.floor(Math.random() * gestureNames.length)];
+                        const gesture = this.gesturePatterns[randomGesture];
+                        
+                        this.processGesture(gesture);
+                    } else {
+                        this.handStatus.textContent = 'Scanning for gestures...';
+                    }
+                }, 1500);
+            }
+
+            processGesture(gesture) {
+                if (this.isProcessing) return;
+                
+                this.lastGesture = gesture;
+                this.gestureConfidence = gesture.confidence;
+                
+                this.handStatus.textContent = `Detected: ${gesture.pattern} (${(gesture.confidence * 100).toFixed(1)}%)`;
+                this.gestureIndicator.classList.add('active');
+                
+                // Visual feedback
+                const ctx = this.gestureCanvas.getContext('2d');
+                ctx.clearRect(0, 0, this.gestureCanvas.width, this.gestureCanvas.height);
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(125, 100, 50, 0, 2 * Math.PI);
+                ctx.stroke();
+                
+                // Execute gesture command
+                setTimeout(() => {
+                    this.executeGestureCommand(gesture.action);
+                    this.gestureIndicator.classList.remove('active');
+                }, 500);
+            }
+
+            executeGestureCommand(action) {
+                const gestureCommands = {
+                    hello: () => this.processAdvancedCommand('hello jarvis'),
+                    stop: () => this.stopListening(),
+                    confirm: () => this.processAdvancedCommand('yes confirm'),
+                    cancel: () => this.processAdvancedCommand('cancel'),
+                    create: () => this.toggleCreateMode(),
+                    execute: () => this.processAdvancedCommand('execute last command')
+                };
+                
+                if (gestureCommands[action]) {
+                    gestureCommands[action]();
+                }
+            }
+
+            toggleVoice() {
+                if (this.isListening) {
+                    this.stopListening();
+                } else {
+                    this.startListening();
+                }
+            }
+
+            startListening() {
+                if (this.recognition) {
+                    this.recognition.start();
+                    this.voiceBtn.classList.add('active');
+                    this.voiceBtn.textContent = 'Stop Listening';
+                }
+            }
+
+            stopListening() {
+                if (this.recognition) {
+                    this.recognition.stop();
+                    this.voiceBtn.classList.remove('active');
+                    this.voiceBtn.textContent = 'Voice Control';
+                }
+            }
+
+            toggleCamera() {
+                this.isCameraActive = !this.isCameraActive;
+                if (this.isCameraActive) {
+                    this.cameraBtn.classList.add('active');
+                    this.cameraBtn.textContent = 'Camera ON';
+                } else {
+                    this.cameraBtn.classList.remove('active');
+                    this.cameraBtn.textContent = 'Camera OFF';
+                }
+            }
+
+            toggleGesture() {
+                this.isGestureActive = !this.isGestureActive;
+                if (this.isGestureActive) {
+                    this.gestureBtn.classList.add('active');
+                    this.gestureBtn.textContent = 'Gesture AI ON';
+                    this.displayResponse('🤖 Advanced gesture recognition activated. Neural networks are analyzing your hand movements.');
+                } else {
+                    this.gestureBtn.classList.remove('active');
+                    this.gestureBtn.textContent = 'Gesture AI';
+                    this.handStatus.textContent = 'Gesture recognition disabled';
+                }
+            }
+
+            toggleCreateMode() {
+                this.isCreateMode = !this.isCreateMode;
+                if (this.isCreateMode) {
+                    this.createBtn.classList.add('active');
+                    this.createBtn.textContent = 'Create Mode ON';
+                    this.displayResponse('🎨 Create Mode activated! I can now generate code, websites, documents, and more. What would you like me to create?');
+                } else {
+                    this.createBtn.classList.remove('active');
+                    this.createBtn.textContent = 'Create Mode';
+                }
+            }
+
+            async processAdvancedCommand(command) {
+                if (this.isProcessing) return;
+                
+                this.isProcessing = true;
+                this.addCommandToHistory(command);
+                this.displayResponse(`🧠 Neural networks processing: "${command}"`);
+                this.showAIThinking();
+                
+                // Simulate AI processing time
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                try {
+                    const response = await this.generateAdvancedResponse(command);
+                    this.displayResponse(response.text);
+                    
+                    if (response.type === 'creation') {
+                        this.showCreationOutput(response.content);
+                    }
+                    
+                    this.speak(response.text);
+                } catch (error) {
+                    this.displayResponse(`❌ Error processing command: ${error.message}`);
+                } finally {
+                    this.hideAIThinking();
+                    this.isProcessing = false;
+                }
+            }
+
+            async generateAdvancedResponse(command) {
+                const cmd = command.toLowerCase();
+                
+                // Creation commands
+                if (cmd.includes('create') || cmd.includes('make') || cmd.includes('build') || cmd.includes('generate')) {
+                    return this.handleCreationCommand(cmd);
+                }
+                
+                // Gesture responses
+                if (cmd.includes('hello') || cmd.includes('hi') || cmd.includes('hey')) {
+                    return {
+                        text: "🤖 Hello! I'm JARVIS, your advanced AI assistant. My neural networks are fully operational and ready to help you create anything you need.",
+                        type: 'response'
+                    };
+                }
+                
+                // Time and date
+                if (cmd.includes('time')) {
+                    return {
+                        text: `⏰ Current time: ${new Date().toLocaleTimeString()}. Neural clock synchronized.`,
+                        type: 'response'
+                    };
+                }
+                
+                if (cmd.includes('date')) {
+                    return {
+                        text: `📅 Today's date: ${new Date().toLocaleDateString()}. All systems operational.`,
+                        type: 'response'
+                    };
+                }
+                
+                // Weather with mock data
+                if (cmd.includes('weather')) {
+                    return {
+                        text: "🌤️ Accessing weather satellites... Current conditions: 72°F, partly cloudy. Perfect weather for innovation!",
+                        type: 'response'
+                    };
+                }
+                
+                // System status
+                if (cmd.includes('status') || cmd.includes('systems')) {
+                    return {
+                        text: "⚡ All systems operational. Neural networks: 100%, Voice recognition: Active, Gesture AI: Online, Creation engine: Ready.",
+                        type: 'response'
+                    };
+                }
+                
+                // Advanced AI responses
+                if (cmd.includes('analyze') || cmd.includes('data')) {
+                    return {
+                        text: "📊 Initializing data analysis protocols. Neural networks are processing patterns and generating insights...",
+                        type: 'response'
+                    };
+                }
+                
+                if (cmd.includes('learn') || cmd.includes('teach')) {
+                    return {
+                        text: "🧠 Adaptive learning algorithms activated. I'm continuously updating my knowledge base through neural network training.",
+                        type: 'response'
+                    };
+                }
+                
+                // Confirmation commands
+                if (cmd.includes('yes') || cmd.includes('confirm') || cmd.includes('ok')) {
+                    return {
+                        text: "✅ Command confirmed. Executing with precision.",
+                        type: 'response'
+                    };
+                }
+                
+                if (cmd.includes('no') || cmd.includes('cancel') || cmd.includes('stop')) {
+                    return {
+                        text: "❌ Command cancelled. Standing by for new instructions.",
+                        type: 'response'
+                    };
+                }
+                
+                // Default intelligent response
+                return {
+                    text: `🤖 I heard: "${command}". My neural networks are analyzing your request. How can I assist you with creation, analysis, or system control?`,
+                    type: 'response'
+                };
+            }
+
+            handleCreationCommand(cmd) {
+                if (cmd.includes('website') || cmd.includes('webpage')) {
+                    return {
+                        text: "🌐 Creating a responsive website with modern design...",
+                        type: 'creation',
+                        content: this.generateWebsite()
+                    };
+                }
+                
+                if (cmd.includes('app') || cmd.includes('application')) {
+                    return {
+                        text: "📱 Generating mobile application code...",
+                        type: 'creation',
+                        content: this.generateApp()
+                    };
+                }
+                
+                if (cmd.includes('code') || cmd.includes('program') || cmd.includes('script')) {
+                    return {
+                        text: "💻 Writing optimized code with best practices...",
+                        type: 'creation',
+                        content: this.generateCode()
+                    };
+                }
+                
+                if (cmd.includes('document') || cmd.includes('report')) {
+                    return {
+                        text: "📄 Creating professional document...",
+                        type: 'creation',
+                        content: this.generateDocument()
+                    };
+                }
+                
+                if (cmd.includes('design') || cmd.includes('ui') || cmd.includes('interface')) {
+                    return {
+                        text: "🎨 Designing user interface with modern aesthetics...",
+                        type: 'creation',
+                        content: this.generateDesign()
+                    };
+                }
+                
+                return {
+                    text: "🔧 General creation mode activated. What specifically would you like me to create?",
+                    type: 'response'
+                };
+            }
+
+            generateWebsite() {
+                return `
+                    <h3>🌐 Generated Website</h3>
+                    <div class="code-editor">
+&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;AI Generated Website&lt;/title&gt;
+    &lt;style&gt;
+        body { 
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            color: white;
+        }
+        .container { 
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 50px 0;
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class="container"&gt;
+        &lt;div class="header"&gt;
+            &lt;h1&gt;🚀 AI-Generated Website&lt;/h1&gt;
+            &lt;p&gt;Created instantly by JARVIS Neural Networks&lt;/p&gt;
+        &lt;/div&gt;
+        
+        &lt;div class="features"&gt;
+            &lt;div class="feature-card"&gt;
+                &lt;h3&gt;⚡ Lightning Fast&lt;/h3&gt;
+                &lt;p&gt;Optimized for speed and performance&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="feature-card"&gt;
+                &lt;h3&gt;📱 Responsive Design&lt;/h3&gt;
+                &lt;p&gt;Works perfectly on all devices&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="feature-card"&gt;
+                &lt;h3&gt;🤖 AI-Powered&lt;/h3&gt;
+                &lt;p&gt;Built with artificial intelligence&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+                    </div>
+                    <p>✨ Website generated successfully! Modern, responsive, and ready to deploy.</p>
+                `;
+            }
+
+            generateApp() {
+                return `
+                    <h3>📱 Generated Mobile App</h3>
+                    <div class="code-editor">
+// React Native App Component
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+
+const AIGeneratedApp = () => {
+    const [fadeAnim] = useState(new Animated.Value(0));
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+        }).start();
+    }, []);
+
+    const incrementCount = () => {
+        setCount(count + 1);
+    };
+
+    return (
+        &lt;View style={styles.container}&gt;
+            &lt;Animated.View style={[styles.header, { opacity: fadeAnim }]}&gt;
+                &lt;Text style={styles.title}&gt;🤖 AI Generated App&lt;/Text&gt;
+                &lt;Text style={styles.subtitle}&gt;Created by JARVIS&lt;/Text&gt;
+            &lt;/Animated.View&gt;
+            
+            &lt;View style={styles.content}&gt;
+                &lt;Text style={styles.counter}&gt;Count: {count}&lt;/Text&gt;
+                &lt;TouchableOpacity style={styles.button} onPress={incrementCount}&gt;
+                    &lt;Text style={styles.buttonText}&gt;Tap Me!&lt;/Text&gt;
+                &lt;/TouchableOpacity&gt;
+            &lt;/View&gt;
+        &lt;/View&gt;
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#1a1a2e',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    header: {
+        alignItems: 'center',
+        marginBottom: 50,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#00d4ff',
+        marginBottom: 10,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#00d4ff',
+        opacity: 0.8,
+    },
+    content: {
+        alignItems: 'center',
+    },
+    counter: {
+        fontSize: 24,
+        color: '#00d4ff',
+        marginBottom: 30,
+    },
+    button: {
+        backgroundColor: '#00d4ff',
+        paddingHorizontal: 30,
+        paddingVertical: 15,
+        borderRadius: 25,
+        elevation: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+    },
+    buttonText: {
+        color: '#1a1a2e',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+});
+
+export default AIGeneratedApp;
+                    </div>
+                    <p>🚀 Mobile app generated! Features animations, state management, and modern UI.</p>
+                `;
+            }
+
+            generateCode() {
+                return `
+                    <h3>💻 Generated Code</h3>
+                    <div class="code-editor">
+// AI-Generated Advanced JavaScript Class
+class NeuralNetworkSimulator {
+    constructor(layers = [4, 8, 8, 2]) {
+        this.layers = layers;
+        this.weights = [];
+        this.biases = [];
+        this.initialize();
+    }
+
+    initialize() {
+        for (let i = 0; i < this.layers.length - 1; i++) {
+            const weight = [];
+            const bias = [];
+            
+            for (let j = 0; j < this.layers[i + 1]; j++) {
+                const neuronWeights = [];
+                for (let k = 0; k < this.layers[i]; k++) {
+                    neuronWeights.push(Math.random() * 2 - 1);
+                }
+                weight.push(neuronWeights);
+                bias.push(Math.random() * 2 - 1);
+            }
+            
+            this.weights.push(weight);
+            this.biases.push(bias);
+        }
+    }
+
+    sigmoid(x) {
+        return 1 / (1 + Math.exp(-x));
+    }
+
+    feedForward(inputs) {
+        let activations = inputs;
+        
+        for (let i = 0; i < this.weights.length; i++) {
+            const newActivations = [];
+            
+            for (let j = 0; j < this.weights[i].length; j++) {
+                let sum = this.biases[i][j];
+                
+                for (let k = 0; k < activations.length; k++) {
+                    sum += activations[k] * this.weights[i][j][k];
+                }
+                
+                newActivations.push(this.sigmoid(sum));
+            }
+            
+            activations = newActivations;
+        }
+        
+        return activations;
+    }
+
+    predict(inputs) {
+        const outputs = this.feedForward(inputs);
+        return outputs.indexOf(Math.max(...outputs));
+    }
+}
+
+// Usage example
+const neuralNet = new NeuralNetworkSimulator([4, 8, 8, 2]);
+const prediction = neuralNet.predict([0.5, 0.3, 0.8, 0.2]);
+console.log('Neural Network Prediction:', prediction);
+                    </div>
+                    <p>🧠 Advanced neural network simulator generated! Ready for training and predictions.</p>
+                `;
+            }
+
+            generateDocument() {
+                return `
+                    <h3>📄 Generated Document</h3>
+                    <div style="background: white; color: black; padding: 20px; border-radius: 10px; font-family: 'Times New Roman', serif;">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #1a1a2e; border-bottom: 2px solid #00d4ff; padding-bottom: 10px;">
+                                🤖 AI-Generated Technical Report
+                            </h1>
+                            <p style="color: #666; font-style: italic;">
+                                Generated by JARVIS Neural Networks • ${new Date().toLocaleDateString()}
+                            </p>
+                        </div>
+                        
+                        <h2 style="color: #1a1a2e; margin-top: 30px;">Executive Summary</h2>
+                        <p style="line-height: 1.6;">
+                            This report presents the latest advancements in artificial intelligence and machine learning 
+                            technologies, with a focus on neural network architectures and their practical applications 
+                            in modern software development.
+                        </p>
+                        
+                        <h2 style="color: #1a1a2e; margin-top: 30px;">Key Findings</h2>
+                        <ul style="line-height: 1.6;">
+                            <li>Neural networks demonstrate 95% accuracy in pattern recognition tasks</li>
+                            <li>Real-time processing capabilities have improved by 300% over the past year</li>
+                            <li>Integration with voice and gesture recognition shows promising results</li>
+                            <li>Automated code generation reduces development time by 60%</li>
+                        </ul>
+                        
+                        <h2 style="color: #1a1a2e; margin-top: 30px;">Recommendations</h2>
+                        <ol style="line-height: 1.6;">
+                            <li>Continue investment in neural network research and development</li>
+                            <li>Expand multimodal AI interfaces for enhanced user experience</li>
+                            <li>Implement robust testing protocols for AI-generated content</li>
+                            <li>Develop ethical guidelines for AI automation in creative processes</li>
+                        </ol>
+                        
+                        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center;">
+                            <p style="font-style: italic; color: #666;">
+                                This document was generated using advanced AI algorithms and reviewed by JARVIS systems.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            generateDesign() {
+                return `
+                    <h3>🎨 Generated UI Design</h3>
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white;">
+                        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; backdrop-filter: blur(10px); margin-bottom: 20px;">
+                            <h2 style="margin: 0 0 10px 0;">🚀 Modern Dashboard</h2>
+                            <p style="margin: 0; opacity: 0.9;">AI-Generated Interface Design</p>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; margin-bottom: 10px;">📊</div>
+                                <h4 style="margin: 0 0 5px 0;">Analytics</h4>
+                                <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">Real-time data</p>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; margin-bottom: 10px;">⚡</div>
+                                <h4 style="margin: 0 0 5px 0;">Performance</h4>
+                                <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">System metrics</p>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; margin-bottom: 10px;">🔧</div>
+                                <h4 style="margin: 0 0 5px 0;">Settings</h4>
+                                <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">Configuration</p>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px;">
+                            <h3 style="margin: 0 0 15px 0;">Design System</h3>
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <div style="width: 30px; height: 30px; background: #667eea; border-radius: 50%;"></div>
+                                <div style="width: 30px; height: 30px; background: #764ba2; border-radius: 50%;"></div>
+                                <div style="width: 30px; height: 30px; background: #00d4ff; border-radius: 50%;"></div>
+                                <div style="width: 30px; height: 30px; background: #ffffff; border-radius: 50%;"></div>
+                            </div>
+                            <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">
+                                Color palette optimized for accessibility and modern aesthetics
+                            </p>
+                        </div>
+                    </div>
+                    <p>✨ UI design generated with modern components, responsive layout, and accessibility features!</p>
+                `;
+            }
+
+            showCreationOutput(content) {
+                this.creationContent.innerHTML = content;
+                this.creationOutput.classList.add('active');
+            }
+
+            closeCreationOutput() {
+                this.creationOutput.classList.remove('active');
+            }
+
+            showAIThinking() {
+                this.aiThinking.classList.add('active');
+            }
+
+            hideAIThinking() {
+                this.aiThinking.classList.remove('active');
+            }
+
+            speak(text) {
+                if ('speechSynthesis' in window) {
+                    // Cancel any ongoing speech
+                    speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance(text.replace(/[🤖⚡🌐📱💻🎨📄📊🔧✨❌✅]/g, ''));
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    utterance.volume = 0.8;
+                    
+                    // Use a more robotic voice if available
+                    const voices = speechSynthesis.getVoices();
+                    const roboticVoice = voices.find(voice => 
+                        voice.name.includes('Google') || 
+                        voice.name.includes('Microsoft') ||
+                        voice.name.includes('Alex')
+                    );
+                    if (roboticVoice) {
+                        utterance.voice = roboticVoice;
+                    }
+                    
+                    speechSynthesis.speak(utterance);
+                }
+            }
+
+            displayResponse(text) {
+                this.responseDisplay.innerHTML = text;
+                this.responseDisplay.style.animation = 'none';
+                this.responseDisplay.offsetHeight; // Trigger reflow
+                this.responseDisplay.style.animation = 'pulse 0.5s ease-in-out';
+            }
+
+            addCommandToHistory(command) {
+                this.commands.unshift({
+                    command: command,
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: this.isCreateMode ? 'create' : 'standard'
+                });
+                
+                if (this.commands.length > 15) {
+                    this.commands.pop();
+                }
+                
+                this.updateCommandHistory();
+            }
+
+            updateCommandHistory() {
+                this.commandList.innerHTML = '';
+                this.commands.forEach(cmd => {
+                    const div = document.createElement('div');
+                    div.className = 'command-item';
+                    const icon = cmd.type === 'create' ? '🎨' : '🎯';
+                    div.innerHTML = `
+                        <div>${icon} ${cmd.command}</div>
+                        <div style="font-size: 10px; opacity: 0.7;">${cmd.timestamp}</div>
+                    `;
+                    this.commandList.appendChild(div);
+                });
+            }
+
+            startStatusUpdates() {
+                setInterval(() => {
+                    if (!this.isListening && !this.isProcessing) {
+                        const statuses = [
+                            'JARVIS Online - Neural Networks Active',
+                            'All systems operational - Ready for commands',
+                            'Advanced AI monitoring for voice and gestures',
+                            'Standing by for creation requests...',
+                            'Neural processing cores at optimal performance'
+                        ];
+                        this.statusText.textContent = statuses[Math.floor(Math.random() * statuses.length)];
+                    }
+                }, 4000);
+            }
+
+            initializeVisuals() {
+                this.initializeParticles();
+            }
+
+            initializeParticles() {
+                const canvas = document.getElementById('particleCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const particles = [];
+                
+                // Create more particles for enhanced effect
+                for (let i = 0; i < 150; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.8,
+                        vy: (Math.random() - 0.5) * 0.8,
+                        alpha: Math.random() * 0.5 + 0.3,
+                        size: Math.random() * 2 + 1
+                    });
+                }
+                
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach((particle, index) => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        
+                        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+                        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+                        
+                        // Create connections between nearby particles
+                        particles.forEach((otherParticle, otherIndex) => {
+                            if (index !== otherIndex) {
+                                const dx = particle.x - otherParticle.x;
+                                const dy = particle.y - otherParticle.y;
+                                const distance = Math.sqrt(dx * dx + dy * dy);
+                                
+                                if (distance < 100) {
+                                    ctx.globalAlpha = 0.1;
+                                    ctx.strokeStyle = '#00d4ff';
+                                    ctx.lineWidth = 0.5;
+                                    ctx.beginPath();
+                                    ctx.moveTo(particle.x, particle.y);
+                                    ctx.lineTo(otherParticle.x, otherParticle.y);
+                                    ctx.stroke();
+                                }
+                            }
+                        });
+                        
+                        ctx.globalAlpha = particle.alpha;
+                        ctx.fillStyle = '#00d4ff';
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+
+            startNeuralAnimation() {
+                const canvas = document.getElementById('neuralCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const nodes = [];
+                const connections = [];
+                
+                // Create neural network nodes
+                for (let i = 0; i < 50; i++) {
+                    nodes.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.3,
+                        vy: (Math.random() - 0.5) * 0.3,
+                        activation: Math.random()
+                    });
+                }
+                
+                function animateNeural() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    nodes.forEach(node => {
+                        node.x += node.vx;
+                        node.y += node.vy;
+                        node.activation += (Math.random() - 0.5) * 0.1;
+                        node.activation = Math.max(0, Math.min(1, node.activation));
+                        
+                        if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+                        if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+                        
+                        const intensity = node.activation;
+                        ctx.globalAlpha = intensity * 0.3;
+                        ctx.fillStyle = `hsl(${180 + intensity * 60}, 100%, 50%)`;
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, 3 + intensity * 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    requestAnimationFrame(animateNeural);
+                }
+                
+                animateNeural();
+            }
+        }
+
+        // Initialize Advanced JARVIS when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AdvancedJARVIS();
+        });
+    </script>
+</body>
+</html>

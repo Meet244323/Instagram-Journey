@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Makeup Try-On with Rotating Avatar</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+            overflow-x: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .header h1 {
+            color: #e91e63;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .avatar-container {
+            flex: 1;
+            min-width: 300px;
+            height: 500px;
+            position: relative;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        #avatar-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .controls {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .control-section {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        .control-section:last-child {
+            border-bottom: none;
+        }
+        h2 {
+            color: #e91e63;
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #333;
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .makeup-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .makeup-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .makeup-option:hover {
+            transform: scale(1.1);
+        }
+        .makeup-option.selected {
+            border-color: #e91e63;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ddd;
+            transition: transform 0.2s;
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .color-option.selected {
+            border-color: #333;
+        }
+        .slider-container {
+            margin-top: 10px;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .button {
+            background-color: #e91e63;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .button:hover {
+            background-color: #d81b60;
+        }
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        .notification.show {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .avatar-container, .controls {
+                width: 100%;
+            }
+            .avatar-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Virtual Makeup Try-On</h1>
+            <p>Try different makeup looks on our 3D avatar! Rotate the avatar to see it from all angles.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="avatar-container">
+                <canvas id="avatar-canvas"></canvas>
+            </div>
+            
+            <div class="controls">
+                <div class="control-section">
+                    <h2>Makeup Studio</h2>
+                    
+                    <h3>Lipstick</h3>
+                    <div class="makeup-options" id="lipstick-options">
+                        <div class="makeup-option selected" style="background-color: #FF5252;" data-type="lipstick"></div>
+                        <div class="makeup-option" style="background-color: #FF4081;" data-type="lipstick"></div>
+                        <div class="makeup-option" style="background-color: #7C4DFF;" data-type="lipstick"></div>
+                        <div class="makeup-option" style="background-color: #FFAB40;" data-type="lipstick"></div>
+                        <div class="makeup-option" style="background-color: #66BB6A;" data-type="lipstick"></div>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="lipstick-intensity">Intensity</label>
+                        <input type="range" id="lipstick-intensity" min="0" max="100" value="70">
+                    </div>
+                    
+                    <h3>Eyeshadow</h3>
+                    <div class="makeup-options" id="eyeshadow-options">
+                        <div class="makeup-option selected" style="background-color: #9C27B0;" data-type="eyeshadow"></div>
+                        <div class="makeup-option" style="background-color: #3F51B5;" data-type="eyeshadow"></div>
+                        <div class="makeup-option" style="background-color: #009688;" data-type="eyeshadow"></div>
+                        <div class="makeup-option" style="background-color: #FF5722;" data-type="eyeshadow"></div>
+                        <div class="makeup-option" style="background-color: #607D8B;" data-type="eyeshadow"></div>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="eyeshadow-intensity">Intensity</label>
+                        <input type="range" id="eyeshadow-intensity" min="0" max="100" value="60">
+                    </div>
+                    
+                    <h3>Blush</h3>
+                    <div class="makeup-options" id="blush-options">
+                        <div class="makeup-option selected" style="background-color: #EC407A;" data-type="blush"></div>
+                        <div class="makeup-option" style="background-color: #AB47BC;" data-type="blush"></div>
+                        <div class="makeup-option" style="background-color: #FFA726;" data-type="blush"></div>
+                        <div class="makeup-option" style="background-color: #26A69A;" data-type="blush"></div>
+                        <div class="makeup-option" style="background-color: #78909C;" data-type="blush"></div>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="blush-intensity">Intensity</label>
+                        <input type="range" id="blush-intensity" min="0" max="100" value="50">
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Avatar Controls</h3>
+                    <button class="button" id="reset-avatar">Reset Avatar</button>
+                    <button class="button" id="capture-photo">Capture Photo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">Photo captured! Check your downloads.</div>
+
+    <!-- Three.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Three.js setup
+        let scene, camera, renderer, controls;
+        let avatar, head, leftEye, rightEye, leftEyebrow, rightEyebrow, mouth, leftCheek, rightCheek, leftLip, rightLip;
+        
+        // Makeup state
+        const makeupState = {
+            lipstick: {
+                color: '#FF5252',
+                intensity: 70
+            },
+            eyeshadow: {
+                color: '#9C27B0',
+                intensity: 60
+            },
+            blush: {
+                color: '#EC407A',
+                intensity: 50
+            }
+        };
+        
+        // Initialize the 3D scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Create renderer
+            const canvas = document.getElementById('avatar-canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            
+            // Add orbit controls for rotation
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            controls.enableZoom = false;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 10, 10);
+            scene.add(directionalLight);
+            
+            // Create avatar
+            createAvatar();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start animation loop
+            animate();
+            
+            // Setup event listeners for controls
+            setupEventListeners();
+        }
+        
+        // Create the cartoon avatar
+        function createAvatar() {
+            avatar = new THREE.Group();
+            
+            // Create head
+            const headGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD8B1 });
+            head = new THREE.Mesh(headGeometry, headMaterial);
+            avatar.add(head);
+            
+            // Create eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            
+            leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.5, 0.3, 1.3);
+            head.add(leftEye);
+            
+            rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.5, 0.3, 1.3);
+            head.add(rightEye);
+            
+            // Create eyebrows
+            const eyebrowGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.1);
+            const eyebrowMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            
+            leftEyebrow = new THREE.Mesh(eyebrowGeometry, eyebrowMaterial);
+            leftEyebrow.position.set(-0.5, 0.7, 1.45);
+            head.add(leftEyebrow);
+            
+            rightEyebrow = new THREE.Mesh(eyebrowGeometry, eyebrowMaterial);
+            rightEyebrow.position.set(0.5, 0.7, 1.45);
+            head.add(rightEyebrow);
+            
+            // Create mouth
+            const mouthGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.1);
+            const mouthMaterial = new THREE.MeshLambertMaterial({ color: makeupState.lipstick.color });
+            mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+            mouth.position.set(0, -0.5, 1.4);
+            head.add(mouth);
+            
+            // Create cheeks (for blush)
+            const cheekGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const cheekMaterial = new THREE.MeshLambertMaterial({ 
+                color: makeupState.blush.color,
+                transparent: true,
+                opacity: makeupState.blush.intensity / 100
+            });
+            
+            leftCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+            leftCheek.position.set(-0.7, -0.2, 1.2);
+            leftCheek.scale.set(1, 1, 0.1);
+            head.add(leftCheek);
+            
+            rightCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+            rightCheek.position.set(0.7, -0.2, 1.2);
+            rightCheek.scale.set(1, 1, 0.1);
+            head.add(rightCheek);
+            
+            // Create lips
+            const lipGeometry = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+            const lipMaterial = new THREE.MeshLambertMaterial({ color: makeupState.lipstick.color });
+            
+            leftLip = new THREE.Mesh(lipGeometry, lipMaterial);
+            leftLip.position.set(-0.2, -0.5, 1.45);
+            head.add(leftLip);
+            
+            rightLip = new THREE.Mesh(lipGeometry, lipMaterial);
+            rightLip.position.set(0.2, -0.5, 1.45);
+            head.add(rightLip);
+            
+            // Create eyeshadow areas
+            const eyeShadowGeometry = new THREE.CircleGeometry(0.3, 32);
+            const eyeShadowMaterial = new THREE.MeshLambertMaterial({ 
+                color: makeupState.eyeshadow.color,
+                transparent: true,
+                opacity: makeupState.eyeshadow.intensity / 100
+            });
+            
+            const leftEyeShadow = new THREE.Mesh(eyeShadowGeometry, eyeShadowMaterial);
+            leftEyeShadow.position.set(-0.5, 0.3, 1.5);
+            leftEyeShadow.rotation.y = Math.PI;
+            head.add(leftEyeShadow);
+            
+            const rightEyeShadow = new THREE.Mesh(eyeShadowGeometry, eyeShadowMaterial);
+            rightEyeShadow.position.set(0.5, 0.3, 1.5);
+            rightEyeShadow.rotation.y = Math.PI;
+            head.add(rightEyeShadow);
+            
+            // Add avatar to scene
+            scene.add(avatar);
+        }
+        
+        // Update makeup based on current state
+        function updateMakeup() {
+            // Update lipstick
+            mouth.material.color.set(makeupState.lipstick.color);
+            leftLip.material.color.set(makeupState.lipstick.color);
+            rightLip.material.color.set(makeupState.lipstick.color);
+            
+            // Update eyeshadow
+            scene.children.forEach(child => {
+                if (child instanceof THREE.Mesh && 
+                    child.geometry instanceof THREE.CircleGeometry && 
+                    child.position.y > 0) {
+                    child.material.color.set(makeupState.eyeshadow.color);
+                    child.material.opacity = makeupState.eyeshadow.intensity / 100;
+                }
+            });
+            
+            // Update blush
+            leftCheek.material.color.set(makeupState.blush.color);
+            rightCheek.material.color.set(makeupState.blush.color);
+            leftCheek.material.opacity = makeupState.blush.intensity / 100;
+            rightCheek.material.opacity = makeupState.blush.intensity / 100;
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            const canvas = renderer.domElement;
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            
+            if (canvas.width !== width || canvas.height !== height) {
+                renderer.setSize(width, height, false);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Setup event listeners for UI controls
+        function setupEventListeners() {
+            // Makeup options
+            document.querySelectorAll('.makeup-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    const color = this.style.backgroundColor;
+                    
+                    // Update selected state
+                    document.querySelectorAll(`#${type}-options .makeup-option`).forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    
+                    // Update makeup state
+                    makeupState[type].color = color;
+                    updateMakeup();
+                });
+            });
+            
+            // Intensity sliders
+            document.getElementById('lipstick-intensity').addEventListener('input', function() {
+                makeupState.lipstick.intensity = this.value;
+                updateMakeup();
+            });
+            
+            document.getElementById('eyeshadow-intensity').addEventListener('input', function() {
+                makeupState.eyeshadow.intensity = this.value;
+                updateMakeup();
+            });
+            
+            document.getElementById('blush-intensity').addEventListener('input', function() {
+                makeupState.blush.intensity = this.value;
+                updateMakeup();
+            });
+            
+            // Reset button
+            document.getElementById('reset-avatar').addEventListener('click', function() {
+                // Reset makeup to default
+                makeupState.lipstick = {
+                    color: '#FF5252',
+                    intensity: 70
+                };
+                makeupState.eyeshadow = {
+                    color: '#9C27B0',
+                    intensity: 60
+                };
+                makeupState.blush = {
+                    color: '#EC407A',
+                    intensity: 50
+                };
+                
+                // Update UI
+                document.querySelectorAll('.makeup-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                document.querySelector('#lipstick-options .makeup-option').classList.add('selected');
+                document.querySelector('#eyeshadow-options .makeup-option').classList.add('selected');
+                document.querySelector('#blush-options .makeup-option').classList.add('selected');
+                
+                document.getElementById('lipstick-intensity').value = 70;
+                document.getElementById('eyeshadow-intensity').value = 60;
+                document.getElementById('blush-intensity').value = 50;
+                
+                updateMakeup();
+            });
+            
+            // Capture photo button
+            document.getElementById('capture-photo').addEventListener('click', function() {
+                // Render the scene
+                renderer.render(scene, camera);
+                
+                // Get the canvas data as an image
+                const canvas = renderer.domElement;
+                const imageURL = canvas.toDataURL('image/png');
+                
+                // Create a temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = 'virtual-makeup-avatar.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show notification
+                const notification = document.getElementById('notification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            });
+        }
+        
+        // Initialize everything when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS - Personal Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00d4ff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .corner-frame {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #00d4ff;
+            border-radius: 4px;
+        }
+
+        .corner-frame.top-left {
+            top: 20px;
+            left: 20px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .corner-frame.top-right {
+            top: 20px;
+            right: 20px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .corner-frame.bottom-left {
+            bottom: 20px;
+            left: 20px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .corner-frame.bottom-right {
+            bottom: 20px;
+            right: 20px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .central-interface {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00d4ff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .voice-visualizer {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            border: 2px solid #00d4ff;
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .voice-waves {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0;
+            animation: wave-expand 2s ease-out infinite;
+        }
+
+        .voice-waves.active {
+            opacity: 1;
+            border: 2px solid #00d4ff;
+        }
+
+        @keyframes wave-expand {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .mic-icon {
+            font-size: 3em;
+            color: #00d4ff;
+            z-index: 3;
+        }
+
+        .video-container {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hand-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, transparent, rgba(0, 212, 255, 0.2));
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 212, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+
+        .response-display {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            min-height: 100px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 60%, 100% { opacity: 1; }
+            30% { opacity: 0.3; }
+        }
+
+        .command-history {
+            position: absolute;
+            left: 20px;
+            top: 100px;
+            width: 250px;
+            height: 400px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .command-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 5px;
+            font-size: 12px;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="grid-lines"></div>
+        <canvas id="particleCanvas" class="canvas-overlay"></canvas>
+        
+        <div class="hud-overlay">
+            <div class="corner-frame top-left"></div>
+            <div class="corner-frame top-right"></div>
+            <div class="corner-frame bottom-left"></div>
+            <div class="corner-frame bottom-right"></div>
+            <div class="status-bar">
+                <span id="statusText">JARVIS Online - Ready for Commands</span>
+            </div>
+        </div>
+
+        <div class="command-history">
+            <h3 style="margin-bottom: 10px; font-size: 14px;">Command History</h3>
+            <div id="commandList"></div>
+        </div>
+
+        <div class="central-interface">
+            <div class="logo">Meet</div>
+            <div class="voice-visualizer">
+                <div class="voice-waves" id="voiceWaves"></div>
+                <div class="mic-icon">🎤</div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn" id="voiceBtn">Voice Control</button>
+                <button class="control-btn" id="cameraBtn">Camera</button>
+                <button class="control-btn" id="gestureBtn">Gesture Control</button>
+                <button class="control-btn" id="settingsBtn">Settings</button>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <video id="videoFeed" autoplay muted></video>
+            <div class="hand-status" id="handStatus">No hand detected</div>
+        </div>
+
+        <div class="response-display" id="responseDisplay">
+            Welcome to Meet PVT ltd! I'm your personal assistant. Try saying "Hello Meet" or wave your hand to get started.
+        </div>
+    </div>
+
+    <script>
+        class JARVISAssistant {
+            constructor() {
+                this.isListening = false;
+                this.isCameraActive = false;
+                this.isGestureActive = false;
+                this.recognition = null;
+                this.commands = [];
+                this.handDetected = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.initializeParticles();
+                this.setupSpeechRecognition();
+                this.setupCamera();
+                this.startStatusUpdates();
+            }
+
+            initializeElements() {
+                this.voiceBtn = document.getElementById('voiceBtn');
+                this.cameraBtn = document.getElementById('cameraBtn');
+                this.gestureBtn = document.getElementById('gestureBtn');
+                this.responseDisplay = document.getElementById('responseDisplay');
+                this.commandList = document.getElementById('commandList');
+                this.statusText = document.getElementById('statusText');
+                this.handStatus = document.getElementById('handStatus');
+                this.voiceWaves = document.getElementById('voiceWaves');
+                this.videoFeed = document.getElementById('videoFeed');
+            }
+
+            setupEventListeners() {
+                this.voiceBtn.addEventListener('click', () => this.toggleVoice());
+                this.cameraBtn.addEventListener('click', () => this.toggleCamera());
+                this.gestureBtn.addEventListener('click', () => this.toggleGesture());
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === ' ' && e.ctrlKey) {
+                        e.preventDefault();
+                        this.toggleVoice();
+                    }
+                });
+            }
+
+            setupSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = true;
+                    this.recognition.lang = 'en-US';
+
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                        this.voiceWaves.classList.add('active');
+                        this.statusText.textContent = 'Listening...';
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            if (event.results[i].isFinal) {
+                                finalTranscript += event.results[i][0].transcript;
+                            }
+                        }
+                        
+                        if (finalTranscript.trim()) {
+                            this.processCommand(finalTranscript.trim());
+                        }
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isListening = false;
+                        this.voiceWaves.classList.remove('active');
+                        this.statusText.textContent = 'JARVIS Online - Ready for Commands';
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        this.displayResponse('Speech recognition error: ' + event.error);
+                    };
+                } else {
+                    this.displayResponse('Speech recognition not supported in this browser');
+                }
+            }
+
+            async setupCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { width: 200, height: 150 } 
+                    });
+                    this.videoFeed.srcObject = stream;
+                    this.isCameraActive = true;
+                    this.startHandDetection();
+                } catch (error) {
+                    console.error('Camera access denied:', error);
+                    this.handStatus.textContent = 'Camera access denied';
+                }
+            }
+
+            startHandDetection() {
+                // Simulate hand detection (in real implementation, use MediaPipe or TensorFlow.js)
+                setInterval(() => {
+                    // Simulate random hand detection
+                    const detected = Math.random() > 0.7;
+                    this.handDetected = detected;
+                    
+                    if (detected) {
+                        this.handStatus.textContent = 'Hand detected ✋';
+                        this.handStatus.style.color = '#00ff00';
+                        
+                        // Auto-start listening when hand is detected
+                        if (!this.isListening && this.isGestureActive) {
+                            this.startListening();
+                        }
+                    } else {
+                        this.handStatus.textContent = 'No hand detected';
+                        this.handStatus.style.color = '#00d4ff';
+                    }
+                }, 1000);
+            }
+
+            toggleVoice() {
+                if (this.isListening) {
+                    this.stopListening();
+                } else {
+                    this.startListening();
+                }
+            }
+
+            startListening() {
+                if (this.recognition) {
+                    this.recognition.start();
+                    this.voiceBtn.classList.add('active');
+                    this.voiceBtn.textContent = 'Stop Listening';
+                }
+            }
+
+            stopListening() {
+                if (this.recognition) {
+                    this.recognition.stop();
+                    this.voiceBtn.classList.remove('active');
+                    this.voiceBtn.textContent = 'Voice Control';
+                }
+            }
+
+            toggleCamera() {
+                this.isCameraActive = !this.isCameraActive;
+                if (this.isCameraActive) {
+                    this.cameraBtn.classList.add('active');
+                    this.cameraBtn.textContent = 'Camera ON';
+                } else {
+                    this.cameraBtn.classList.remove('active');
+                    this.cameraBtn.textContent = 'Camera OFF';
+                }
+            }
+
+            toggleGesture() {
+                this.isGestureActive = !this.isGestureActive;
+                if (this.isGestureActive) {
+                    this.gestureBtn.classList.add('active');
+                    this.gestureBtn.textContent = 'Gesture ON';
+                    this.displayResponse('Gesture control activated. Wave your hand to start listening.');
+                } else {
+                    this.gestureBtn.classList.remove('active');
+                    this.gestureBtn.textContent = 'Gesture Control';
+                }
+            }
+
+            processCommand(command) {
+                this.addCommandToHistory(command);
+                this.displayResponse(`Processing: "${command}"`);
+                
+                // Simulate AI processing
+                setTimeout(() => {
+                    const response = this.generateResponse(command);
+                    this.displayResponse(response);
+                    this.speak(response);
+                }, 1000);
+            }
+
+            generateResponse(command) {
+                const cmd = command.toLowerCase();
+                
+                if (cmd.includes('hello') || cmd.includes('hi')) {
+                    return "Hello! I'm MEET, your personal assistant. How can I help you today?";
+                } else if (cmd.includes('time')) {
+                    return `The current time is ${new Date().toLocaleTimeString()}`;
+                } else if (cmd.includes('date')) {
+                    return `Today's date is ${new Date().toLocaleDateString()}`;
+                } else if (cmd.includes('weather')) {
+                    return "I'd need to connect to a weather service to get current weather data.";
+                } else if (cmd.includes('music') || cmd.includes('song')) {
+                    return "I can help you play music. What would you like to listen to?";
+                } else if (cmd.includes('reminder')) {
+                    return "Reminder set! I'll notify you at the specified time.";
+                } else if (cmd.includes('search')) {
+                    return "Searching for information on your request...";
+                } else if (cmd.includes('calculate') || cmd.includes('math')) {
+                    return "I can perform calculations. What would you like me to calculate?";
+                } else if (cmd.includes('news')) {
+                    return "Here are the latest news updates I can access...";
+                } else if (cmd.includes('email')) {
+                    return "I can help you manage your emails. What would you like to do?";
+                } else {
+                    return `I heard you say: "${command}". I'm still learning to understand all commands. How can I help you?`;
+                }
+            }
+
+            speak(text) {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    utterance.volume = 0.8;
+                    speechSynthesis.speak(utterance);
+                }
+            }
+
+            displayResponse(text) {
+                this.responseDisplay.innerHTML = text;
+                this.responseDisplay.style.animation = 'none';
+                this.responseDisplay.offsetHeight; // Trigger reflow
+                this.responseDisplay.style.animation = 'pulse 0.5s ease-in-out';
+            }
+
+            addCommandToHistory(command) {
+                this.commands.unshift({
+                    command: command,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                
+                if (this.commands.length > 10) {
+                    this.commands.pop();
+                }
+                
+                this.updateCommandHistory();
+            }
+
+            updateCommandHistory() {
+                this.commandList.innerHTML = '';
+                this.commands.forEach(cmd => {
+                    const div = document.createElement('div');
+                    div.className = 'command-item';
+                    div.innerHTML = `
+                        <div>${cmd.command}</div>
+                        <div style="font-size: 10px; opacity: 0.7;">${cmd.timestamp}</div>
+                    `;
+                    this.commandList.appendChild(div);
+                });
+            }
+
+            startStatusUpdates() {
+                setInterval(() => {
+                    if (!this.isListening) {
+                        const statuses = [
+                            'JARVIS Online - Ready for Commands',
+                            'All systems operational',
+                            'Monitoring for voice commands',
+                            'Standing by...'
+                        ];
+                        this.statusText.textContent = statuses[Math.floor(Math.random() * statuses.length)];
+                    }
+                }, 5000);
+            }
+
+            initializeParticles() {
+                const canvas = document.getElementById('particleCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const particles = [];
+                
+                for (let i = 0; i < 100; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        alpha: Math.random()
+                    });
+                }
+                
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        
+                        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+                        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+                        
+                        ctx.globalAlpha = particle.alpha;
+                        ctx.fillStyle = '#00d4ff';
+                        ctx.fillRect(particle.x, particle.y, 1, 1);
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+        }
+
+        // Initialize JARVIS when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new JARVISAssistant();
+        });
+    </script>
+</body>
+</html>
