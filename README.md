@@ -137,17 +137,29 @@ https://github.com/user-attachments/assets/5baffab5-fb72-4943-800c-70866b0cfbf4
 
 ### 🔹 Advanced Admin Page
 
+
+https://github.com/user-attachments/assets/616069d7-206f-4213-9fee-c820ffe24ed7
+
+
 <video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
 
 ---
 
 ### 🔹 Earth Interface
 
+
+https://github.com/user-attachments/assets/1ed4062e-9d15-44ad-bba8-e6d9e814781d
+
+
 <video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
 
 ---
 
 ### 🔹 YouTube Video Downloader (4K UI)
+
+
+https://github.com/user-attachments/assets/1f0bab09-794c-4d97-88e1-53406b8d5438
+
 
 <video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
 
