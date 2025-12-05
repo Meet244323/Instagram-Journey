@@ -155,6 +155,10 @@ https://github.com/user-attachments/assets/5baffab5-fb72-4943-800c-70866b0cfbf4
 
 ### 🔹 Personal Assistant
 
+
+https://github.com/user-attachments/assets/fcd97c4b-64a2-47da-a1ea-f93a9db6783f
+
+
 <video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
 
 ---
