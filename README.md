@@ -119,6 +119,57 @@ This project collection is part of an initiative to share knowledge and engage w
 - Web design principles and UI/UX patterns
 - Version control and Git workflow
 
+Here is a clean, simple **README section with placeholders** where you can drop your videos:
+
+---
+
+## 📽️ Project Demos
+
+### 🔹 Multiple AI
+
+
+https://github.com/user-attachments/assets/5baffab5-fb72-4943-800c-70866b0cfbf4
+
+
+<video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
+
+---
+
+### 🔹 Advanced Admin Page
+
+<video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
+
+---
+
+### 🔹 Earth Interface
+
+<video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
+
+---
+
+### 🔹 YouTube Video Downloader (4K UI)
+
+<video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
+
+---
+
+### 🔹 Personal Assistant
+
+<video src="PUT-YOUR-VIDEO-LINK-HERE" width="600" controls></video>
+
+---
+
+*(All demos focus on the UI design only.)*
+
+---
+
+If you want, I can also make it:
+
+* More compact
+* More aesthetic
+* With borders or cards
+  Just tell me your style!
+
 ## Contributing
 
 Feel free to fork this repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
